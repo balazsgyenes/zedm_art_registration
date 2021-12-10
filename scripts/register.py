@@ -115,7 +115,7 @@ class RegistrationManager:
             data=data
         )
 
-@jit(nopython=True) 
+@jit(nopython=True, parallel=True) 
 def costly_fransform(transformation, point_array):
     for i in range(point_array.shape[0]):
         point_array[i] = np.dot(transformation, point_array[i])
