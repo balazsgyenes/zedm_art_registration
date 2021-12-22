@@ -17,6 +17,8 @@ class RegistrationManager:
 
         self.pointcloud_listener = rospy.Subscriber("/zedm/zed_node/point_cloud/cloud_registered", PointCloud2, self.point_cloud_callback)
         self.pointcloud_publisher = rospy.Publisher('art_point_cloud', PointCloud2, queue_size=1)
+        self.lower_left = np.array([0.317, -0.177, -0.13])
+        self.upper_right = np.array([0.512, 0.113, 0.088])
 
 
     def run(self):
@@ -27,10 +29,14 @@ class RegistrationManager:
         time1 = time.time()
         pointcloud_array = utils.pointcloud2_to_xyz_array(data)
 
-        extended_pointcloud_array = np.c_[pointcloud_array, np.ones(pointcloud_array.shape[0])]
+        # Crop the pointcloud to a box of interest
+        cropped_pointcloud_array = utils.filter_xyz_array(pointcloud_array, self.lower_left, self.upper_right)
+
+        # Extend xyz coordinates to homogeneous coordinates
+        extended_pointcloud_array = np.c_[cropped_pointcloud_array, np.ones(cropped_pointcloud_array.shape[0])]
         
         T = get_transformation()
-        I = get_identity_transformation()
+        # I = get_identity_transformation()
         transformed_pointcloud_array = transform_pointcloud_array(T, extended_pointcloud_array)
 
         transformed_pointcloud = utils.xyz_array_to_pointcloud2(transformed_pointcloud_array[:, :3])
@@ -55,17 +61,18 @@ def get_transformation():
     https://math.stackexchange.com/questions/158538/3d-transformation-two-triangles
     """
 
-#From zed-camera:
-#1: 0.38363, 0.11284, 0.015562
-#2: 0.45257, -0.13175, 0.059208
-#3: 0.29046, 0.064291, -0.11021
-#4: 0.36034, -0.18044, -0.068268
+    #From zed-camera:
+    #1: 0.4675, -0.12991, 0.076441
+    #2: 0.4001, 0.11646, 0.034272
+    #3: 0.37326, -0.17731, -0.052214
+    #4: 0.30678, 0.06988, -0.09068
 
-#From ART-Pointing-Device:
-#1: -0.19867, 0.076615, -0.23578
-#2: -0.23415, 0.32177, -0.2342
-#3: -0.043547, 0.10136, -0.23641
-#4: -0.073239, 0.34946, -0.23872
+    # from ART
+    #1: -0.011744, 0.20327, -0.1815
+    #2: -0.013273, -0.043344, -0.17657
+    #3: 0.14558, 0.21421, -0.17886
+    #4: 0.14316, -0.044337, -0.18223
+
 
     # These points are selected in RVIZ, first select 
     # the numbered points on the marker "KIRURC Zed Mini -> ART"
@@ -75,14 +82,14 @@ def get_transformation():
     # art_# (ART pointing device) in order.
 
     # From zed-camera:
-    cam_1 = np.array([0.45257, -0.13175, 0.059208])
-    cam_2 = np.array([0.38363, 0.11284, 0.015562])
-    cam_3 = np.array([0.36034, -0.18044, -0.068268])
+    cam_1 = np.array([0.4675, -0.12991, 0.076441])
+    cam_2 = np.array([0.4001, 0.11646, 0.034272])
+    cam_3 = np.array([0.37326, -0.17731, -0.052214])
 
     # From ART-Pointing-Device:
-    art_1 = np.array([-0.23415, 0.32177, -0.2342])
-    art_2 = np.array([-0.19867, 0.076615, -0.23578])
-    art_3 = np.array([-0.073239, 0.34946, -0.23872])
+    art_1 = np.array([-0.011744, 0.20327, -0.1815])
+    art_2 = np.array([-0.013273, -0.043344, -0.17657])
+    art_3 = np.array([0.14558, 0.21421, -0.17886])
 
     c = (cam_1 + cam_2 + cam_3)/3.0
     z = (art_1 + art_2 + art_3)/3.0

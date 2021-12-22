@@ -2,6 +2,8 @@ from sensor_msgs.msg import PointCloud2, PointField
 from std_msgs.msg import Header
 import numpy as np
 import rospy
+from numba import njit, prange
+import numba
 
 
 
@@ -119,3 +121,24 @@ def xyz_array_to_pointcloud2(points, parent_frame="art"):
         row_step=(itemsize * 3 * points.shape[0]),
         data=data
     )
+
+@njit(parallel=True) 
+def filter_xyz_array(points, lower_left, upper_right):
+    indices_in_bbox = np.empty(points.shape[0], dtype=numba.types.bool_)
+    for i in prange(indices_in_bbox.shape[0]):
+        indices_in_bbox[i] = np.all(np.logical_and(lower_left <= points[i], points[i] <= upper_right))
+
+    return points[indices_in_bbox]
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
