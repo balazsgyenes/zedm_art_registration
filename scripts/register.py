@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rospy
 from scipy.spatial.transform import Rotation
-from numba import jit, prange
+from numba import njit, prange
 from scipy import linalg
 import numpy as np
 from geometry_msgs.msg import PoseStamped
@@ -41,13 +41,14 @@ class RegistrationManager:
 
         transformed_pointcloud = utils.xyz_array_to_pointcloud2(transformed_pointcloud_array[:, :3])
         
-        print('Transformation function took %0.3f ms' % ((time.time()-time1)*1000.0))
+        computation_time = (time.time()-time1)*1000.0
+        print(f"Transformation function took {computation_time:07.3f} ms to transform {len(transformed_pointcloud_array)} points.")
 
         self.pointcloud_publisher.publish(transformed_pointcloud)
 
 
 
-@jit(nopython=True, parallel=True) 
+@njit(parallel=True) 
 def transform_pointcloud_array(transformation, pointcloud_array):  
     for i in prange(pointcloud_array.shape[0]):
         pointcloud_array[i] = np.dot(transformation, pointcloud_array[i])
@@ -55,6 +56,7 @@ def transform_pointcloud_array(transformation, pointcloud_array):
     return pointcloud_array
 
 
+@njit(parallel=True) 
 def get_transformation():
     """
     Computes the transormation from needed to map one triangle onto another. See:
@@ -111,7 +113,7 @@ def get_transformation():
     H = y1 + y2 + y3
 
     # Compute singular value decomposition
-    U, s, Vh = linalg.svd(H)
+    U, s, Vh = np.linalg.svd(H)
 
     # Compute the rotation matrix
     R = Vh.T.dot(U.T)

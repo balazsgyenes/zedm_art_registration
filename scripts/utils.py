@@ -6,7 +6,6 @@ from numba import njit, prange
 import numba
 
 
-
 DUMMY_FIELD_PREFIX = '__'
 type_mappings = [(PointField.INT8, np.dtype('int8')), (PointField.UINT8, np.dtype('uint8')), (PointField.INT16, np.dtype('int16')),
                  (PointField.UINT16, np.dtype('uint16')), (PointField.INT32, np.dtype('int32')), (PointField.UINT32, np.dtype('uint32')),
@@ -16,6 +15,7 @@ pftype_to_nptype = dict(type_mappings)
 # sizes (in bytes) of PointField types
 pftype_sizes = {PointField.INT8: 1, PointField.UINT8: 1, PointField.INT16: 2, PointField.UINT16: 2,
                 PointField.INT32: 4, PointField.UINT32: 4, PointField.FLOAT32: 4, PointField.FLOAT64: 8}
+
 
 def fields_to_dtype(fields, point_step):
     '''Convert a list of PointFields to a numpy record datatype.
@@ -86,8 +86,6 @@ def get_xyz_points(cloud_array, remove_nans=True, dtype=np.float):
 
 def pointcloud2_to_xyz_array(cloud_msg, remove_nans=True):
     return get_xyz_points(pointcloud2_to_array(cloud_msg), remove_nans=remove_nans)
-
-
 
 
 def xyz_array_to_pointcloud2(points, parent_frame="art"):
