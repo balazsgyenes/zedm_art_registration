@@ -88,7 +88,7 @@ def pointcloud2_to_xyz_array(cloud_msg, remove_nans=True):
     return get_xyz_points(pointcloud2_to_array(cloud_msg), remove_nans=remove_nans)
 
 
-def xyz_array_to_pointcloud2(points, parent_frame="art"):
+def xyz_array_to_pointcloud2(points, parent_frame="map"):
     """ Creates a point cloud message.
     Args:
         points: Nx3 array of xyz positions

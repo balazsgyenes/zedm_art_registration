@@ -10,7 +10,11 @@ project(zedm_art_registration)
 find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
+  sensor_msgs
+  roscpp
 )
+
+find_package(PCL REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -67,10 +71,9 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+        DEPENDENCIES std_msgs sensor_msgs geometry_msgs  # Or other packages containing msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -102,6 +105,15 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
+  CATKIN_DEPENDS
+  roscpp
+  message_runtime
+  std_msgs
+  sensor_msgs
+
+  #  LIBRARIES your_libs
+  # CATKIN_DEPENDS 
+  DEPENDS ${PCL_LIBRARIES}
 #  INCLUDE_DIRS include
 #  LIBRARIES zedm_art_registration
 #  CATKIN_DEPENDS std_msgs
@@ -123,6 +135,16 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/zedm_art_registration.cpp
 # )
+
+add_executable(colour_filter src/color_filter.cpp)
+target_link_libraries(colour_filter ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+target_include_directories(colour_filter PRIVATE
+  ${catkin_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRECTORIES}
+)
+set_property(TARGET colour_filter PROPERTY CXX_STANDARD 17)
+# TODO: I think we need some sort of "message" dependency here
+add_dependencies(colour_filter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

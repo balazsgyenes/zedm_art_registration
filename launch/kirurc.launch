@@ -1,0 +1,8 @@
+<launch>
+    <include file="$(find zed_wrapper)/launch/zedm.launch" />
+    <include file="$(find art_calibration_proc)/launch/kirurc_art_processing.launch" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find zedm_art_registration)/rviz/kirurc.rviz" />
+    <node name="CofiNode" pkg="rcofi" type="rcofi" output="screen"/>
+    <node name="ZedFrameGrabberNode" pkg="rzed_frame_grabber" type="rzed_frame_grabber" cwd="node" output="screen"/>
+    <node name="Preprocessing" pkg="zedm_art_registration" type="register.py" />
+</launch>
