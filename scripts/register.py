@@ -1,82 +1,30 @@
 #!/usr/bin/env python3
-import rospy
-from scipy.spatial.transform import Rotation
-from numba import njit, prange
-from scipy import linalg
-import numpy as np
-from geometry_msgs.msg import PoseStamped
-from sensor_msgs.msg import PointCloud2
-import tf2_ros
 import geometry_msgs.msg
-import time
-import utils
-
-class RegistrationManager:
-    def __init__(self):
-        rospy.init_node('zedm_art_registration_node', anonymous=True)
-
-        self.pointcloud_listener = rospy.Subscriber("/zedm/zed_node/point_cloud/cloud_registered", PointCloud2, self.point_cloud_callback)
-        self.pointcloud_publisher = rospy.Publisher('art_point_cloud', PointCloud2, queue_size=1)
-        self.lower_left = np.array([0.317, -0.177, -0.13])
-        self.upper_right = np.array([0.512, 0.113, 0.088])
+import numpy as np
+import rospy
+import tf2_ros
+from tf.transformations import quaternion_from_matrix
 
 
-    def run(self):
-        rospy.spin()
-   
-
-    def point_cloud_callback(self, data) -> None:
-        time1 = time.time()
-        pointcloud_array = utils.pointcloud2_to_xyz_array(data)
-
-        # Crop the pointcloud to a box of interest
-        cropped_pointcloud_array = utils.filter_xyz_array(pointcloud_array, self.lower_left, self.upper_right)
-
-        # Extend xyz coordinates to homogeneous coordinates
-        extended_pointcloud_array = np.c_[cropped_pointcloud_array, np.ones(cropped_pointcloud_array.shape[0])]
-        
-        T = get_transformation()
-        # I = get_identity_transformation()
-        transformed_pointcloud_array = transform_pointcloud_array(T, extended_pointcloud_array)
-
-        transformed_pointcloud = utils.xyz_array_to_pointcloud2(transformed_pointcloud_array[:, :3])
-        
-        computation_time = (time.time()-time1)*1000.0
-        print(f"Transformation function took {computation_time:07.3f} ms to transform {len(transformed_pointcloud_array)} points.")
-
-        self.pointcloud_publisher.publish(transformed_pointcloud)
-
-
-
-@njit(parallel=True) 
-def transform_pointcloud_array(transformation, pointcloud_array):  
-    for i in prange(pointcloud_array.shape[0]):
-        pointcloud_array[i] = np.dot(transformation, pointcloud_array[i])
-
-    return pointcloud_array
-
-
-@njit(parallel=True) 
 def get_transformation():
     """
     Computes the transormation from needed to map one triangle onto another. See:
     https://math.stackexchange.com/questions/158538/3d-transformation-two-triangles
     """
 
-    #From zed-camera:
-    #1: 0.4675, -0.12991, 0.076441
-    #2: 0.4001, 0.11646, 0.034272
-    #3: 0.37326, -0.17731, -0.052214
-    #4: 0.30678, 0.06988, -0.09068
+    # From zed-camera:
+    # 1: 0.4675, -0.12991, 0.076441
+    # 2: 0.4001, 0.11646, 0.034272
+    # 3: 0.37326, -0.17731, -0.052214
+    # 4: 0.30678, 0.06988, -0.09068
 
     # from ART
-    #1: -0.011744, 0.20327, -0.1815
-    #2: -0.013273, -0.043344, -0.17657
-    #3: 0.14558, 0.21421, -0.17886
-    #4: 0.14316, -0.044337, -0.18223
+    # 1: -0.011744, 0.20327, -0.1815
+    # 2: -0.013273, -0.043344, -0.17657
+    # 3: 0.14558, 0.21421, -0.17886
+    # 4: 0.14316, -0.044337, -0.18223
 
-
-    # These points are selected in RVIZ, first select 
+    # These points are selected in RVIZ, first select
     # the numbered points on the marker "KIRURC Zed Mini -> ART"
     # in correct order from the Zed-Mini Camera point cloud.
     # Then use the ART pointing device to point at the same points.
@@ -93,8 +41,8 @@ def get_transformation():
     art_2 = np.array([-0.013273, -0.043344, -0.17657])
     art_3 = np.array([0.14558, 0.21421, -0.17886])
 
-    c = (cam_1 + cam_2 + cam_3)/3.0
-    z = (art_1 + art_2 + art_3)/3.0
+    c = (cam_1 + cam_2 + cam_3) / 3.0
+    z = (art_1 + art_2 + art_3) / 3.0
 
     # Centered
     ycam_1 = cam_1 - c
@@ -121,21 +69,50 @@ def get_transformation():
     # Compute the translation
     t = z - R.dot(c)
     t = np.array([[t[0]], [t[1]], [t[2]]])
-    
-    affine_append = np.array([[0,0,0,1]])
-    affine_matrix = np.append(R, t, axis=1)
-    affine_matrix = np.append(affine_matrix, affine_append, axis=0)
-    
-    return affine_matrix
+
+    R = np.append(R, np.array([[0.0], [0.0], [0.0]]), axis=1)
+    R = np.append(R, np.array([[0.0, 0.0, 0.0, 1.0]]), axis=0)
+
+    print(R)
+
+    return R, t
+
 
 def get_identity_transformation():
-    return np.array([
-    [ 1.,         0.,         0.,          0.],
-    [ 0.,         1.,         0.,          0.],
-    [ 0.,         0.,         1.,          0.],
-    [ 0.,         0.,         0.,          1.]])
+    return np.array(
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
 
 
-if __name__ == '__main__':
-    node = RegistrationManager()
-    node.run()
+def broadcast_transform(R, t):
+    broadcaster = tf2_ros.StaticTransformBroadcaster()
+
+    transform = geometry_msgs.msg.TransformStamped()
+
+    transform.header.stamp = rospy.Time.now()
+    transform.header.frame_id = "world"
+    transform.child_frame_id = "zedm_base_link"
+
+    transform.transform.translation.x = t[0]
+    transform.transform.translation.y = t[1]
+    transform.transform.translation.z = t[2]
+
+    quat = quaternion_from_matrix(R)
+    transform.transform.rotation.x = quat[0]
+    transform.transform.rotation.y = quat[1]
+    transform.transform.rotation.z = quat[2]
+    transform.transform.rotation.w = quat[3]
+
+    broadcaster.sendTransform(transform)
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    rospy.init_node("world_to_zedm_transform")
+    R, t = get_transformation()
+    broadcast_transform(R, t)
