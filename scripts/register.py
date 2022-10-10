@@ -3,7 +3,8 @@ import geometry_msgs.msg
 import numpy as np
 import rospy
 import tf2_ros
-from tf.transformations import quaternion_from_matrix
+from tf.transformations import (decompose_matrix, quaternion_from_euler,
+                                quaternion_from_matrix)
 
 
 def get_transformation():
@@ -30,16 +31,15 @@ def get_transformation():
     # Then use the ART pointing device to point at the same points.
     # Enter the values (x,y,z) into the cam_# (ZED-cam) and
     # art_# (ART pointing device) in order.
-
     # From zed-camera:
-    cam_1 = np.array([0.4675, -0.12991, 0.076441])
-    cam_2 = np.array([0.4001, 0.11646, 0.034272])
-    cam_3 = np.array([0.37326, -0.17731, -0.052214])
+    cam_1 = np.array([0.4822, -0.1592, -0.040076])
+    cam_2 = np.array([0.33867, -0.15714, -0.11682])
+    cam_3 = np.array([0.34042, 0.098564, -0.11644])
 
     # From ART-Pointing-Device:
-    art_1 = np.array([-0.011744, 0.20327, -0.1815])
-    art_2 = np.array([-0.013273, -0.043344, -0.17657])
-    art_3 = np.array([0.14558, 0.21421, -0.17886])
+    art_1 = np.array([0.32941, 0.079804, 0.082608])
+    art_2 = np.array([0.44958, 0.19301, 0.076914])
+    art_3 = np.array([0.63186, 0.012911, 0.089436])
 
     c = (cam_1 + cam_2 + cam_3) / 3.0
     z = (art_1 + art_2 + art_3) / 3.0
@@ -72,8 +72,6 @@ def get_transformation():
 
     R = np.append(R, np.array([[0.0], [0.0], [0.0]]), axis=1)
     R = np.append(R, np.array([[0.0, 0.0, 0.0, 1.0]]), axis=0)
-
-    print(R)
 
     return R, t
 
