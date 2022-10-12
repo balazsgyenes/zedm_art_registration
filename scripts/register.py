@@ -3,91 +3,42 @@ import geometry_msgs.msg
 import numpy as np
 import rospy
 import tf2_ros
-from tf.transformations import (decompose_matrix, quaternion_from_euler,
-                                quaternion_from_matrix)
+import tf.transformations as tf
 
 
-def get_transformation():
-    """
-    Computes the transormation from needed to map one triangle onto another. See:
-    https://math.stackexchange.com/questions/158538/3d-transformation-two-triangles
-    """
+def get_transformation(v0, v1):
+    v0 = np.array(v0, dtype=np.float64, copy=False)[:3]
+    v1 = np.array(v1, dtype=np.float64, copy=False)[:3]
 
-    # From zed-camera:
-    # 1: 0.4675, -0.12991, 0.076441
-    # 2: 0.4001, 0.11646, 0.034272
-    # 3: 0.37326, -0.17731, -0.052214
-    # 4: 0.30678, 0.06988, -0.09068
+    t0 = np.mean(v0, axis=1)
+    t1 = np.mean(v1, axis=1)
 
-    # from ART
-    # 1: -0.011744, 0.20327, -0.1815
-    # 2: -0.013273, -0.043344, -0.17657
-    # 3: 0.14558, 0.21421, -0.17886
-    # 4: 0.14316, -0.044337, -0.18223
+    v0 = v0 - t0.reshape(3, 1)
+    v1 = v1 - t1.reshape(3, 1)
 
-    # These points are selected in RVIZ, first select
-    # the numbered points on the marker "KIRURC Zed Mini -> ART"
-    # in correct order from the Zed-Mini Camera point cloud.
-    # Then use the ART pointing device to point at the same points.
-    # Enter the values (x,y,z) into the cam_# (ZED-cam) and
-    # art_# (ART pointing device) in order.
-    # From zed-camera:
-    cam_1 = np.array([0.4822, -0.1592, -0.040076])
-    cam_2 = np.array([0.33867, -0.15714, -0.11682])
-    cam_3 = np.array([0.34042, 0.098564, -0.11644])
+    H = np.einsum("ij,ik->jk", v0, v1)
 
-    # From ART-Pointing-Device:
-    art_1 = np.array([0.32941, 0.079804, 0.082608])
-    art_2 = np.array([0.44958, 0.19301, 0.076914])
-    art_3 = np.array([0.63186, 0.012911, 0.089436])
-
-    c = (cam_1 + cam_2 + cam_3) / 3.0
-    z = (art_1 + art_2 + art_3) / 3.0
-
-    # Centered
-    ycam_1 = cam_1 - c
-    ycam_2 = cam_2 - c
-    ycam_3 = cam_3 - c
-
-    yart_1 = art_1 - z
-    yart_2 = art_2 - z
-    yart_3 = art_3 - z
-
-    # Build outer products
-    y1 = np.outer(ycam_1, yart_1)
-    y2 = np.outer(ycam_2, yart_2)
-    y3 = np.outer(ycam_3, yart_3)
-
-    H = y1 + y2 + y3
-
-    # Compute singular value decomposition
     U, s, Vh = np.linalg.svd(H)
+    R = np.dot(U, Vh)
 
-    # Compute the rotation matrix
-    R = Vh.T.dot(U.T)
+    if np.linalg.det(R) < 0.0:
+        R -= np.outer(U[:, 2], Vh[2, :] * 2.0)
+        s[-1] *= -1.0
+        print(np.linalg.det(R))
 
-    # Compute the translation
-    t = z - R.dot(c)
-    t = np.array([[t[0]], [t[1]], [t[2]]])
+    M = np.identity(4)
+    M[:3, :3] = R
 
-    R = np.append(R, np.array([[0.0], [0.0], [0.0]]), axis=1)
-    R = np.append(R, np.array([[0.0, 0.0, 0.0, 1.0]]), axis=0)
+    M[:3, 3] = t1
+    T = np.identity(4)
+    T[:3, 3] = -t0
 
-    return R, t
-
-
-def get_identity_transformation():
-    return np.array(
-        [
-            [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ]
-    )
+    M = np.dot(M, T)
+    return M
 
 
-def broadcast_transform(R, t):
+def broadcast_transform(M):
+
     broadcaster = tf2_ros.StaticTransformBroadcaster()
 
     transform = geometry_msgs.msg.TransformStamped()
@@ -96,15 +47,18 @@ def broadcast_transform(R, t):
     transform.header.frame_id = "world"
     transform.child_frame_id = "zedm_base_link"
 
-    transform.transform.translation.x = t[0]
-    transform.transform.translation.y = t[1]
-    transform.transform.translation.z = t[2]
+    quat = tf.quaternion_from_matrix(M)
 
-    quat = quaternion_from_matrix(R)
     transform.transform.rotation.x = quat[0]
     transform.transform.rotation.y = quat[1]
     transform.transform.rotation.z = quat[2]
     transform.transform.rotation.w = quat[3]
+
+    t = M[:, -1]
+    transform.transform.translation.x = t[0]
+    transform.transform.translation.y = t[1]
+    transform.transform.translation.z = t[2]
+    transform.transform
 
     broadcaster.sendTransform(transform)
     rospy.spin()
@@ -112,5 +66,23 @@ def broadcast_transform(R, t):
 
 if __name__ == "__main__":
     rospy.init_node("world_to_zedm_transform")
-    R, t = get_transformation()
-    broadcast_transform(R, t)
+    art = np.array(
+        [
+            [0.24659, 0.19616, 0.39307],
+            [0.35993, 0.21301, 0.39462],
+            [0.4487, 0.028446, 0.38294],
+        ]
+    )
+
+    cam = np.array(
+        [
+            [0.47996, -0.19691, -0.040598],
+            [0.34798, -0.13264, -0.11247],
+            [0.43435, 0.10304, -0.065814],
+        ]
+    )
+    # m = get_transformation()
+    M = get_transformation(art, cam)
+
+    broadcast_transform(M)
+    # broadcast_transform(R, t)
