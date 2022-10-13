@@ -22,10 +22,10 @@ def get_transformation(cam, art):
     U, s, Vh = np.linalg.svd(H)
     R = np.dot(Vh.T, U.T)
 
-    # if (t := np.linalg.det(R)) < 0.0:
-    #     print(t)
-    #     R -= np.outer(U[:, 2], Vh[2, :] * 2.0)
-    #     s[-1] *= -1.0
+    if (t := np.linalg.det(R)) < 0.0:
+        print(t)
+        R -= np.outer(U[:, 2], Vh[2, :] * 2.0)
+        s[-1] *= -1.0
 
     M = np.identity(4)
     M[:3, :3] = R
@@ -36,33 +36,6 @@ def get_transformation(cam, art):
 
     M = np.dot(M, T)
     return M
-
-
-def broadcast_transform(M):
-
-    broadcaster = tf2_ros.StaticTransformBroadcaster()
-
-    transform = geometry_msgs.msg.TransformStamped()
-
-    transform.header.stamp = rospy.Time.now()
-    transform.header.frame_id = "world"
-    transform.child_frame_id = "zedm_base_link"
-
-    quat = quaternion_from_matrix(M)
-
-    transform.transform.rotation.x = quat[0]
-    transform.transform.rotation.y = quat[1]
-    transform.transform.rotation.z = quat[2]
-    transform.transform.rotation.w = quat[3]
-
-    t = M[:, -1]
-    transform.transform.translation.x = t[0]
-    transform.transform.translation.y = t[1]
-    transform.transform.translation.z = t[2]
-    transform.transform
-
-    broadcaster.sendTransform(transform)
-    rospy.spin()
 
 
 def quaternion_from_matrix(matrix):
@@ -97,25 +70,51 @@ def quaternion_from_matrix(matrix):
     return q
 
 
+def broadcast_transform(M):
+
+    broadcaster = tf2_ros.StaticTransformBroadcaster()
+
+    transform = geometry_msgs.msg.TransformStamped()
+
+    transform.header.stamp = rospy.Time.now()
+    transform.header.frame_id = "world"
+    transform.child_frame_id = "zedm_base_link"
+
+    quat = quaternion_from_matrix(M)
+
+    transform.transform.rotation.x = quat[0]
+    transform.transform.rotation.y = quat[1]
+    transform.transform.rotation.z = quat[2]
+    transform.transform.rotation.w = quat[3]
+
+    t = M[:, -1]
+    transform.transform.translation.x = t[0]
+    transform.transform.translation.y = t[1]
+    transform.transform.translation.z = t[2]
+    transform.transform
+
+    broadcaster.sendTransform(transform)
+    rospy.spin()
+
+
 if __name__ == "__main__":
     rospy.init_node("world_to_zedm_transform")
 
     cam = np.array(
         [
-            [0.4675, -0.12991, 0.076441],
-            [0.4001, 0.11646, 0.034272],
-            [0.37326, -0.17731, -0.052214],
+            [0.55759, -0.14846, -0.084495],
+            [0.57318, 0.1068, -0.07685],
+            [0.41476, -0.13638, -0.16184],
         ]
     )
 
     art = np.array(
         [
-            [-0.011744, 0.20327, -0.1815],
-            [-0.013273, -0.043344, -0.17657],
-            [0.14558, 0.21421, -0.17886],
+            [0.3006, 0.10805, 0.084583],
+            [0.47285, -0.081049, 0.087751],
+            [0.42922, 0.22742, 0.088832],
         ]
     )
-    # m = get_transformation()
     M = get_transformation(cam, art)
 
     broadcast_transform(M)
