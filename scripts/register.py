@@ -22,10 +22,14 @@ def get_transformation(cam, art):
     U, s, Vh = np.linalg.svd(H)
     R = np.dot(Vh.T, U.T)
 
-    if (t := np.linalg.det(R)) < 0.0:
-        print(t)
-        R -= np.outer(U[:, 2], Vh[2, :] * 2.0)
-        s[-1] *= -1.0
+    if np.linalg.det(R) < 0.0:
+        print(np.linalg.det(R))
+        # R[:, 1] *= -1.0
+        # R[:, 0] *= -1.0
+        R[:, 2] *= -1.0
+        # R[:, 1], R[:, 2] = R[:, 2].copy(), R[:, 1].copy()
+        # R[1], R[2] = R[2].copy(), R[1].copy()
+        print(np.linalg.det(R))
 
     M = np.identity(4)
     M[:3, :3] = R
@@ -35,6 +39,7 @@ def get_transformation(cam, art):
     T[:3, 3] = -cam_mean
 
     M = np.dot(M, T)
+
     return M
 
 
@@ -77,8 +82,8 @@ def broadcast_transform(M):
     transform = geometry_msgs.msg.TransformStamped()
 
     transform.header.stamp = rospy.Time.now()
-    transform.header.frame_id = "world"
-    transform.child_frame_id = "zedm_base_link"
+    transform.header.frame_id = "panda_link0"
+    transform.child_frame_id = "zedm_left_camera_frame"
 
     quat = quaternion_from_matrix(M)
 
@@ -102,20 +107,22 @@ if __name__ == "__main__":
 
     cam = np.array(
         [
-            [0.55759, -0.14846, -0.084495],
-            [0.57318, 0.1068, -0.07685],
-            [0.41476, -0.13638, -0.16184],
+            # [0.30495, 0.016443, 0.034566],
+            [0.30605, -0.15636, 0.03692],
+            [0.21063, -0.097186, -0.018438],
+            [0.36895, 0.0016331, -0.098358],
         ]
     )
 
     art = np.array(
         [
-            [0.3006, 0.10805, 0.084583],
-            [0.47285, -0.081049, 0.087751],
-            [0.42922, 0.22742, 0.088832],
+            # [0.52452, 0.13541, 0.31996],
+            [0.40046, 0.26326, 0.30254],
+            [0.52113, 0.29652, 0.30222],
+            [0.52609, 0.1354, 0.17186],
         ]
     )
     M = get_transformation(cam, art)
-
+    print(M)
     broadcast_transform(M)
     # broadcast_transform(R, t)
