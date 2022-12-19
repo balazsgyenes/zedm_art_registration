@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import math
 
-import geometry_msgs.msg
+# import geometry_msgs.msg
 import numpy as np
-import rospy
-import tf2_ros
+# import rospy
+# import tf2_ros
 
 
 def get_transformation(cam, art):
@@ -103,7 +103,7 @@ def broadcast_transform(M):
 
 
 if __name__ == "__main__":
-    rospy.init_node("world_to_zedm_transform")
+    # rospy.init_node("world_to_zedm_transform")
 
     cam = np.array(
         [
@@ -124,5 +124,5 @@ if __name__ == "__main__":
     )
     M = get_transformation(cam, panda)
     print(M)
-    broadcast_transform(M)
+    # broadcast_transform(M)
     # broadcast_transform(R, t)
