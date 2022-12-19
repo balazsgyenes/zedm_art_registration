@@ -62,6 +62,9 @@ def least_squares_fit_affine_transform(
     https://math.stackexchange.com/questions/613530/understanding-an-affine-transformation/613804
     https://en.m.wikipedia.org/wiki/Scale-invariant_feature_transform#Model_verification_by_linear_least_squares 
     """
+    if other_coords.shape[0] < 4 or world_coords.shape[0] < 4:
+        raise ValueError("Least squares fit requires at least 4 points.")
+
     transform = np.identity(4)
 
     # construct left side of equation by expressing other_coords in homogenous
