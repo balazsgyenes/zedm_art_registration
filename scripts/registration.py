@@ -4,7 +4,57 @@ import numpy as np
 import numpy.random as random
 
 
-def fit_affine_transform(other_coords, world_coords):
+def nearest_orthogonal_affine_transform(
+    other_coords: np.ndarray,
+    world_coords: np.ndarray,
+) -> np.ndarray:
+    """Computes an affine transform based on the nearest orthogonal matrix
+    algorithm (see link). This algorithm works roughly half the time,
+    otherwise it outputs incorrect results. This case is detectable because
+    the determinant of the rotation matrix is also negative, but I do not know
+    how to recover from this. Retrying the algorithm with the points reordered
+    seems to work.
+    
+    https://en.wikipedia.org/wiki/Singular_value_decomposition#Nearest_orthogonal_matrix
+    
+    One benefit is it only requires 3 points to return a result, instead of 4
+    for linear regression.
+
+    The normalization step is required, output is incorrect without it.
+    """
+    
+    other_coords_mean = np.mean(other_coords, axis=0)
+    world_mean = np.mean(world_coords, axis=0)
+
+    other_coords = other_coords - other_coords_mean
+    world_coords = world_coords - world_mean
+
+    H = np.matmul(other_coords.T, world_coords)
+
+    U, s, Vh = np.linalg.svd(H)
+
+    # this is almost the pseudoinverse of H, but without the s
+    R = Vh.T @ U.T
+
+    if np.linalg.det(R) < 0.0:
+        print(R)
+        raise RuntimeError("Negative determinant of rotation matrix")
+
+    M = np.identity(4)
+    M[:3, :3] = R
+    M[:3, 3] = world_mean
+
+    T = np.identity(4)
+    T[:3, 3] = -other_coords_mean
+    M = M @ T
+
+    return M
+
+
+def least_squares_fit_affine_transform(
+    other_coords: np.ndarray,
+    world_coords: np.ndarray,
+) -> np.ndarray:
     """Computes the best fit affine transform from the other coordinate system
     into the world coordinate system.
 
@@ -29,7 +79,7 @@ def fit_affine_transform(other_coords, world_coords):
     return transform
 
 
-def random_affine_transform(rng: random.Generator):
+def random_affine_transform(rng: random.Generator) -> np.ndarray:
 
     euler_angles = np.pi * rng.random(size=(3,)) - np.pi / 2
     translation = 5 * rng.random(size=(3,)) - 2.5

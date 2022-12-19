@@ -1,8 +1,8 @@
 import numpy as np
 import numpy.random as random
 
-from register import get_transformation
-from registration import random_affine_transform, random_corresponding_points
+from registration import (random_affine_transform, random_corresponding_points,
+    nearest_orthogonal_affine_transform)
 
 
 if __name__ == "__main__":
@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     world_coords, other_coords = random_corresponding_points(rng, transform, n_points=3)
 
-    transform2 = get_transformation(other_coords, world_coords)
+    transform2 = nearest_orthogonal_affine_transform(other_coords, world_coords)
 
     print(transform2)
     assert np.allclose(transform, transform2)

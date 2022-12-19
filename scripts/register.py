@@ -1,46 +1,12 @@
 #!/usr/bin/env python3
 import math
 
-# import geometry_msgs.msg
+import geometry_msgs.msg
 import numpy as np
-# import rospy
-# import tf2_ros
+import rospy
+import tf2_ros
 
-
-def get_transformation(cam, art):
-    cam = np.array(cam, dtype=np.float64, copy=False)[:3]
-    art = np.array(art, dtype=np.float64, copy=False)[:3]
-
-    cam_mean = np.mean(cam, axis=0)
-    art_mean = np.mean(art, axis=0)
-
-    cam = cam - cam_mean
-    art = art - art_mean
-
-    H = np.einsum("ij,ik->jk", cam, art)
-
-    U, s, Vh = np.linalg.svd(H)
-    R = np.dot(Vh.T, U.T)
-
-    if np.linalg.det(R) < 0.0:
-        print(np.linalg.det(R))
-        # R[:, 1] *= -1.0
-        # R[:, 0] *= -1.0
-        R[:, 2] *= -1.0
-        # R[:, 1], R[:, 2] = R[:, 2].copy(), R[:, 1].copy()
-        # R[1], R[2] = R[2].copy(), R[1].copy()
-        print(np.linalg.det(R))
-
-    M = np.identity(4)
-    M[:3, :3] = R
-
-    M[:3, 3] = art_mean
-    T = np.identity(4)
-    T[:3, 3] = -cam_mean
-
-    M = np.dot(M, T)
-
-    return M
+from registration import least_squares_fit_affine_transform
 
 
 def quaternion_from_matrix(matrix):
@@ -103,7 +69,7 @@ def broadcast_transform(M):
 
 
 if __name__ == "__main__":
-    # rospy.init_node("world_to_zedm_transform")
+    rospy.init_node("world_to_zedm_transform")
 
     cam = np.array(
         [
@@ -122,7 +88,7 @@ if __name__ == "__main__":
             [0.48835, 0.14241, 0.11909],
         ]
     )
-    M = get_transformation(cam, panda)
+    M = least_squares_fit_affine_transform(cam, panda)
     print(M)
-    # broadcast_transform(M)
+    broadcast_transform(M)
     # broadcast_transform(R, t)
