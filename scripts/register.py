@@ -6,7 +6,7 @@ import numpy as np
 import rospy
 import tf2_ros
 
-from registration import least_squares_fit_affine_transform
+from algos import least_squares_fit_affine_transform
 
 
 def quaternion_from_matrix(matrix):
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         [
             [0.31358, -0.18482, 0.019107],
             [0.33351, 0.033511, -0.022393],
-            # [0.25871, -0.028601, -0.030549],
+            [0.25871, -0.028601, -0.030549],
             [0.40935, -0.040489, -0.13591],
         ]
     )
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         [
             [0.38616, 0.27147, 0.2776],
             [0.53905, 0.11011, 0.25714],
-            # [0.54555, 0.20716, 0.27335],
+            [0.54555, 0.20716, 0.27335],
             [0.48835, 0.14241, 0.11909],
         ]
     )

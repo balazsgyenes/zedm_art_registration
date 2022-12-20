@@ -8,18 +8,19 @@ def nearest_orthogonal_affine_transform(
     other_coords: np.ndarray,
     world_coords: np.ndarray,
 ) -> np.ndarray:
-    """Computes an affine transform based on the nearest orthogonal matrix
-    algorithm (see link). This algorithm works roughly half the time,
-    otherwise it outputs incorrect results. This case is detectable because
-    the determinant of the rotation matrix is also negative, but I do not know
-    how to recover from this. Retrying the algorithm with the points reordered
-    seems to work.
-    
+    """Fits an affine transform using Singular Value Decomposition to find the
+    nearest orthogonal matrix to `A^T b` (see link below). The returned
+    transform converts points from other_coords to points in world_coords.
+
     https://en.wikipedia.org/wiki/Singular_value_decomposition#Nearest_orthogonal_matrix
     
-    One benefit is it only requires 3 points to return a result, instead of 4
-    for linear regression.
-
+    When given only 3 pairs of points, this algorithm works only roughly half
+    the time, outputting incorrect results the other half. This case is
+    detectable because the determinant of the rotation matrix is also negative,
+    but I do not know how to recover from this. Retrying the algorithm with
+    the points reordered seems to work. For 4 points, this failure case is much
+    less common, and appears to be extremely unlikely for even more points.
+    
     The normalization step is required, output is incorrect without it.
     """
     
@@ -55,8 +56,10 @@ def least_squares_fit_affine_transform(
     other_coords: np.ndarray,
     world_coords: np.ndarray,
 ) -> np.ndarray:
-    """Computes the best fit affine transform from the other coordinate system
-    into the world coordinate system.
+    """Fits an affine transform using least-squares fitting given pairs of
+    matching points. The returned transform converts points from other_coords
+    to points in world_coords. This algorithm requires minimum 4 pairs of
+    points.
 
     References:
     https://math.stackexchange.com/questions/613530/understanding-an-affine-transformation/613804

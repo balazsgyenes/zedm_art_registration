@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.random as random
 
-from registration import (random_affine_transform, random_corresponding_points,
+from algos import (random_affine_transform, random_corresponding_points,
     least_squares_fit_affine_transform)
 
 
